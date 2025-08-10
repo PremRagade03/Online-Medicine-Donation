@@ -10,73 +10,29 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { donationService } from '@/services/donationService';
 
 const HospitalDashboard = () => {
   const { user } = useAuth();
   const [donations, setDonations] = useState([]);
   const [orders, setOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load donations and orders from localStorage
-    const savedDonations = localStorage.getItem('medishare_donations');
-    const savedOrders = localStorage.getItem('medishare_orders');
-    
-    if (savedDonations) {
-      setDonations(JSON.parse(savedDonations));
-    } else {
-      // Initialize with sample donations if none exist
-      const sampleDonations = [
-        {
-          id: 1,
-          medicineName: "Paracetamol 500mg",
-          quantity: "500 tablets",
-          expiryDate: "2024-12-31",
-          donorName: "City Pharmacy",
-          status: "available",
-          description: "Pain reliever and fever reducer"
-        },
-        {
-          id: 2,
-          medicineName: "Amoxicillin 250mg",
-          quantity: "200 capsules",
-          expiryDate: "2024-08-15",
-          donorName: "Health Plus Medical",
-          status: "available",
-          description: "Antibiotic for bacterial infections"
-        },
-        {
-          id: 3,
-          medicineName: "Ibuprofen 400mg",
-          quantity: "300 tablets",
-          expiryDate: "2025-03-20",
-          donorName: "Community Clinic",
-          status: "available",
-          description: "Anti-inflammatory pain medication"
-        },
-        {
-          id: 4,
-          medicineName: "Omeprazole 20mg",
-          quantity: "150 capsules",
-          expiryDate: "2024-11-30",
-          donorName: "Family Medical Store",
-          status: "available",
-          description: "Acid reflux medication"
-        },
-        {
-          id: 5,
-          medicineName: "Vitamin D3 1000IU",
-          quantity: "100 tablets",
-          expiryDate: "2025-06-15",
-          donorName: "Wellness Center",
-          status: "available",
-          description: "Vitamin supplement"
-        }
-      ];
-      localStorage.setItem('medishare_donations', JSON.stringify(sampleDonations));
-      setDonations(sampleDonations);
-    }
-    
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load donations from API
+      const donationsData = await donationService.getAllDonations();
+      setDonations(Array.isArray(donationsData) ? donationsData : []);
+      
+      // Load orders from localStorage for now
+      const savedOrders = localStorage.getItem('medishare_orders');
     if (savedOrders) {
       setOrders(JSON.parse(savedOrders));
     } else {
@@ -85,8 +41,8 @@ const HospitalDashboard = () => {
         {
           id: 1,
           donationId: 1,
-          hospitalId: user.id,
-          hospitalName: user.name,
+            hospitalId: user?.id || 1,
+            hospitalName: user?.name || 'Demo Hospital',
           medicineName: "Paracetamol 500mg",
           quantity: "100 tablets",
           donorName: "City Pharmacy",
@@ -96,8 +52,8 @@ const HospitalDashboard = () => {
         {
           id: 2,
           donationId: 2,
-          hospitalId: user.id,
-          hospitalName: user.name,
+            hospitalId: user?.id || 1,
+            hospitalName: user?.name || 'Demo Hospital',
           medicineName: "Amoxicillin 250mg",
           quantity: "50 capsules",
           donorName: "Health Plus Medical",
@@ -108,7 +64,50 @@ const HospitalDashboard = () => {
       localStorage.setItem('medishare_orders', JSON.stringify(sampleOrders));
       setOrders(sampleOrders);
     }
-  }, [user.id]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      
+      // Fallback to localStorage for development
+      const savedDonations = localStorage.getItem('medishare_donations');
+      if (savedDonations) {
+        setDonations(JSON.parse(savedDonations));
+      } else {
+        // Initialize with sample donations if none exist
+        const sampleDonations = [
+          {
+            donationId: 1,
+            medicineName: "Paracetamol 500mg",
+            quantity: 500,
+            expiryDate: "2024-12-31",
+            donorName: "Prem Ragade",
+            status: "completed",
+            medicineStatus: "available",
+            description: "Pain reliever and fever reducer"
+          },
+          {
+            donationId: 2,
+            medicineName: "Amoxicillin 250mg",
+            quantity: 200,
+            expiryDate: "2024-08-15",
+            donorName: "Prem Ragade",
+            status: "completed",
+            medicineStatus: "available",
+            description: "Antibiotic for bacterial infections"
+          }
+        ];
+        localStorage.setItem('medishare_donations', JSON.stringify(sampleDonations));
+        setDonations(sampleDonations);
+      }
+      
+      toast({
+        title: "Connection Error",
+        description: "Using offline data. Please check your connection.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOrderMedicine = (donation) => {
     const order = {
@@ -129,7 +128,7 @@ const HospitalDashboard = () => {
 
     toast({
       title: "Order placed successfully!",
-      description: `Your request for ${donation.medicineName} has been sent to the donor.`,
+      description: `Your request for ${donation.medicineName} has been sent to the Admin.`,
     });
   };
 

@@ -1,208 +1,191 @@
-// Medicine Service - MySQL Integration
-// This file demonstrates how to integrate with MySQL database for medicine CRUD operations
-
+// src/services/medicineService.js
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:44344/api';
 
 export const medicineService = {
-  // Get all medicines
   async getAllMedicines() {
     try {
       const response = await fetch(`${API_BASE_URL}/medicines`);
       if (!response.ok) {
-        throw new Error('Failed to fetch medicines');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      const data = await response.json();
+      
+      // Transform backend data to frontend format
+      return this.transformMedicineData(data);
     } catch (error) {
       console.error('Error fetching medicines:', error);
-      throw error;
+      throw new Error('Failed to fetch medicines from server');
     }
   },
 
-  // Get medicine by ID
-  async getMedicineById(medicineId) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/medicines/${medicineId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch medicine');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching medicine:', error);
-      throw error;
-    }
-  },
-
-  // Add new medicine
-  async addMedicine(medicineData) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/medicines`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(medicineData),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to add medicine');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error adding medicine:', error);
-      throw error;
-    }
-  },
-
-  // Update medicine
-  async updateMedicine(medicineId, medicineData) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/medicines/${medicineId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(medicineData),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update medicine');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating medicine:', error);
-      throw error;
-    }
-  },
-
-  // Delete medicine
-  async deleteMedicine(medicineId) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/medicines/${medicineId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete medicine');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error deleting medicine:', error);
-      throw error;
-    }
-  },
-
-  // Search medicines
-  async searchMedicines(searchTerm) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/medicines/search?q=${encodeURIComponent(searchTerm)}`);
-      if (!response.ok) {
-        throw new Error('Failed to search medicines');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error searching medicines:', error);
-      throw error;
-    }
-  },
-
-  // Get medicines by status
-  async getMedicinesByStatus(status) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/medicines/status/${status}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch medicines by status');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching medicines by status:', error);
-      throw error;
-    }
-  },
-
-  // Get medicines by donor
   async getMedicinesByDonor(donorId) {
     try {
       const response = await fetch(`${API_BASE_URL}/medicines/donor/${donorId}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch medicines by donor');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      const data = await response.json();
+      
+      // Transform backend data to frontend format
+      return this.transformMedicineData(data);
     } catch (error) {
-      console.error('Error fetching medicines by donor:', error);
-      throw error;
+      console.error('Error fetching donor medicines:', error);
+      throw new Error('Failed to fetch donor medicines from server');
     }
   },
 
-  // Get medicine statistics
-  async getMedicineStats() {
+  async getMedicineById(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/medicines/stats`);
+      const response = await fetch(`${API_BASE_URL}/medicines/${id}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch medicine statistics');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      const data = await response.json();
+      
+      // Transform single medicine data
+      return this.transformMedicineData([data])[0];
     } catch (error) {
-      console.error('Error fetching medicine statistics:', error);
-      throw error;
+      console.error('Error fetching medicine details:', error);
+      throw new Error('Failed to fetch medicine details from server');
     }
   },
 
-  // Export medicines data
-  async exportMedicines(format = 'json') {
+  async addMedicine(medicine) {
     try {
-      const response = await fetch(`${API_BASE_URL}/medicines/export?format=${format}`);
+      // Transform frontend data to backend format
+      const backendData = this.transformToBackendFormat(medicine);
+      
+      const response = await fetch(`${API_BASE_URL}/medicines`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(backendData),
+      });
+      
       if (!response.ok) {
-        throw new Error('Failed to export medicines');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.blob();
+      
+      const data = await response.json();
+      return this.transformMedicineData([data])[0];
     } catch (error) {
-      console.error('Error exporting medicines:', error);
-      throw error;
+      console.error('Error adding medicine:', error);
+      throw new Error('Failed to add medicine to server');
     }
+  },
+
+  async updateMedicine(id, medicine) {
+    try {
+      // Transform frontend data to backend format
+      const backendData = this.transformToBackendFormat(medicine);
+      
+      const response = await fetch(`${API_BASE_URL}/medicines/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(backendData),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return this.transformMedicineData([data])[0];
+    } catch (error) {
+      console.error('Error updating medicine:', error);
+      throw new Error('Failed to update medicine on server');
+    }
+  },
+
+  async deleteMedicine(id) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/medicines/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting medicine:', error);
+      throw new Error('Failed to delete medicine from server');
+    }
+  },
+
+  // Transform backend data to frontend format
+  transformMedicineData(backendData) {
+    if (!Array.isArray(backendData)) {
+      backendData = [backendData];
+    }
+
+    return backendData.map(item => ({
+      MedicineID: item.id || item.MedicineID || item.medicineId,
+      Name: item.name || item.Name || item.medicineName || 'Unknown Medicine',
+      Description: item.description || item.Description || item.medicineDescription || 'No description available',
+      ExpiryDate: item.expiryDate || item.ExpiryDate || item.expiry_date || 'N/A',
+      Quantity: item.quantity || item.Quantity || item.medicineQuantity || 0,
+      DonorID: item.donorId || item.DonorID || item.donor_id || 0,
+      Status: item.status || item.Status || 'pending',
+      CreatedAt: item.createdAt || item.CreatedAt || item.created_at || new Date().toISOString(),
+      // Additional fields that might be useful
+      Category: item.category || item.Category || 'General',
+      Manufacturer: item.manufacturer || item.Manufacturer || 'Unknown',
+      Dosage: item.dosage || item.Dosage || 'N/A',
+      Form: item.form || item.Form || 'N/A',
+      Price: item.price || item.Price || 0,
+      BatchNumber: item.batchNumber || item.BatchNumber || item.batch_number || 'N/A',
+      StorageCondition: item.storageCondition || item.StorageCondition || item.storage_condition || 'Store in a cool, dry place',
+      PrescriptionRequired: item.prescriptionRequired || item.PrescriptionRequired || item.prescription_required || false
+    }));
+  },
+
+  // Transform frontend data to backend format
+  transformToBackendFormat(frontendData) {
+    return {
+      name: frontendData.Name || frontendData.name,
+      description: frontendData.Description || frontendData.description,
+      expiryDate: frontendData.ExpiryDate || frontendData.expiryDate,
+      quantity: frontendData.Quantity || frontendData.quantity,
+      donorId: frontendData.DonorID || frontendData.donorId,
+      status: frontendData.Status || frontendData.status,
+      category: frontendData.Category || frontendData.category,
+      manufacturer: frontendData.Manufacturer || frontendData.manufacturer,
+      dosage: frontendData.Dosage || frontendData.dosage,
+      form: frontendData.Form || frontendData.form,
+      price: frontendData.Price || frontendData.price,
+      batchNumber: frontendData.BatchNumber || frontendData.batchNumber,
+      storageCondition: frontendData.StorageCondition || frontendData.storageCondition,
+      prescriptionRequired: frontendData.PrescriptionRequired || frontendData.prescriptionRequired
+    };
+  },
+
+  // Utility function to validate medicine data
+  validateMedicineData(medicine) {
+    const errors = [];
+    
+    if (!medicine.name || medicine.name.trim() === '') {
+      errors.push('Medicine name is required');
+    }
+    
+    if (!medicine.expiryDate) {
+      errors.push('Expiry date is required');
+    } else {
+      const expiryDate = new Date(medicine.expiryDate);
+      const today = new Date();
+      if (expiryDate < today) {
+        errors.push('Expiry date cannot be in the past');
+      }
+    }
+    
+    if (!medicine.quantity || medicine.quantity <= 0) {
+      errors.push('Quantity must be greater than 0');
+    }
+    
+    if (!medicine.donorId || medicine.donorId <= 0) {
+      errors.push('Valid donor ID is required');
+    }
+    
+    return errors;
   }
 };
-
-// Example MySQL queries that would be used on the backend:
-
-/*
--- Get all medicines
-SELECT * FROM medicines ORDER BY CreatedAt DESC;
-
--- Get medicine by ID
-SELECT * FROM medicines WHERE MedicineID = ?;
-
--- Add new medicine
-INSERT INTO medicines (Name, Description, ExpiryDate, Quantity, DonorID, Status) 
-VALUES (?, ?, ?, ?, ?, ?);
-
--- Update medicine
-UPDATE medicines 
-SET Name = ?, Description = ?, ExpiryDate = ?, Quantity = ?, DonorID = ?, Status = ? 
-WHERE MedicineID = ?;
-
--- Delete medicine
-DELETE FROM medicines WHERE MedicineID = ?;
-
--- Search medicines
-SELECT * FROM medicines 
-WHERE Name LIKE ? OR Description LIKE ? 
-ORDER BY CreatedAt DESC;
-
--- Get medicines by status
-SELECT * FROM medicines WHERE Status = ? ORDER BY CreatedAt DESC;
-
--- Get medicines by donor
-SELECT * FROM medicines WHERE DonorID = ? ORDER BY CreatedAt DESC;
-
--- Get medicine statistics
-SELECT 
-  COUNT(*) as total,
-  COUNT(CASE WHEN Status = 'Pending' THEN 1 END) as pending,
-  COUNT(CASE WHEN Status = 'Verified' THEN 1 END) as verified,
-  COUNT(CASE WHEN Status = 'Donated' THEN 1 END) as donated,
-  SUM(Quantity) as totalQuantity
-FROM medicines;
-
--- Get medicines expiring soon (within 30 days)
-SELECT * FROM medicines 
-WHERE ExpiryDate <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) 
-AND Status != 'Donated'
-ORDER BY ExpiryDate ASC;
-*/ 

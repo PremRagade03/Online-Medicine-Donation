@@ -30,7 +30,7 @@ export const ngoService = {
     }
   },
 
-  // Create new NGO
+  // Create new NGO - Fixed method
   async createNgo(ngoData) {
     try {
       const response = await fetch(`${API_BASE_URL}/ngoes`, {
@@ -40,14 +40,22 @@ export const ngoService = {
         },
         body: JSON.stringify(ngoData),
       });
+      
       if (!response.ok) {
-        throw new Error('Failed to create NGO');
+        const errorData = await response.text();
+        throw new Error(`Failed to create NGO: ${response.status} - ${errorData}`);
       }
+      
       return await response.json();
     } catch (error) {
       console.error('Error creating NGO:', error);
       throw error;
     }
+  },
+
+  // Alias for backward compatibility
+  async addNgo(ngoData) {
+    return this.createNgo(ngoData);
   },
 
   // Update NGO
@@ -222,4 +230,4 @@ export const ngoService = {
       throw error;
     }
   }
-}; 
+};

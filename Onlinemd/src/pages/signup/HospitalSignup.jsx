@@ -56,18 +56,44 @@ const HospitalSignup = () => {
       return false;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
     if (!emailRegex.test(formData.email)) {
       toast({
         title: "Validation Error",
-        description: "Please enter a valid email address",
+        description: "Email must be a valid @gmail.com address",
         variant: "destructive",
       });
       return false;
     }
 
+    const passwordStrengthRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/;
+
+  if (!passwordStrengthRegex.test(formData.password)) {
+  toast({
+    title: "Validation Error",
+    description: "Password must contain at least one uppercase letter and one special character",
+    variant: "destructive",
+  });
+  return false;
+}
+    
+
+    if (formData.phone && !/^[6-9]\d{9}$/.test(formData.phone)) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid 10-digit Indian mobile number",
+        variant: "destructive",
+      });
+      return false;
+    }
+  
+
     return true;
   };
+
+ 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -78,12 +104,12 @@ const HospitalSignup = () => {
       setLoading(true);
 
       const signupData = {
-        Name: formData.Name,
-        Email: formData.email,
-        Password: formData.password,
-        Phone: formData.phone,
-        Address: formData.address,
-        Role: 'hospital'
+        name: formData.Name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        address: formData.address,
+        role: 'hospital'
       };
 
       const response = await userService.register(signupData);

@@ -19,6 +19,7 @@ import {
   Clock
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { medicineService } from '@/services/medicineService';
 
 const MedicineList = () => {
   const [medicines, setMedicines] = useState([]);
@@ -136,13 +137,25 @@ const MedicineList = () => {
   ];
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
+    loadMedicines();
+  }, []);
+
+  const loadMedicines = async () => {
+    setLoading(true);
+    try {
+      const data = await medicineService.getAllMedicines();
+      console.log('Loaded medicines from API:', data);
+      setMedicines(data);
+      setFilteredMedicines(data);
+    } catch (error) {
+      console.error('Error loading medicines:', error);
+      // Fallback to dummy data if API fails
       setMedicines(dummyMedicines);
       setFilteredMedicines(dummyMedicines);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
 
   useEffect(() => {
     let filtered = medicines;
@@ -150,28 +163,36 @@ const MedicineList = () => {
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(medicine =>
-        medicine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        medicine.genericName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        medicine.manufacturer.toLowerCase().includes(searchTerm.toLowerCase())
+        (medicine.Name || medicine.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (medicine.GenericName || medicine.genericName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (medicine.Manufacturer || medicine.manufacturer || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Filter by category
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(medicine => medicine.category === selectedCategory);
+      filtered = filtered.filter(medicine => (medicine.Category || medicine.category) === selectedCategory);
     }
 
     // Filter by status
     if (selectedStatus !== 'all') {
-      filtered = filtered.filter(medicine => medicine.status === selectedStatus);
+      filtered = filtered.filter(medicine => (medicine.Status || medicine.status) === selectedStatus);
     }
 
     setFilteredMedicines(filtered);
   }, [searchTerm, selectedCategory, selectedStatus, medicines]);
 
-  const handleDelete = (medicineId) => {
+  const handleDelete = async (medicineId) => {
     if (window.confirm('Are you sure you want to delete this medicine?')) {
-      setMedicines(medicines.filter(medicine => medicine.id !== medicineId));
+      try {
+        await medicineService.deleteMedicine(medicineId);
+        const updatedMedicines = medicines.filter(medicine => (medicine.MedicineID || medicine.id) !== medicineId);
+        setMedicines(updatedMedicines);
+        setFilteredMedicines(updatedMedicines);
+      } catch (error) {
+        console.error('Error deleting medicine:', error);
+        alert('Failed to delete medicine. Please try again.');
+      }
     }
   };
 
@@ -222,7 +243,7 @@ const MedicineList = () => {
   };
 
   const getCategories = () => {
-    return [...new Set(medicines.map(medicine => medicine.category))];
+    return [...new Set(medicines.map(medicine => medicine.Category || medicine.category))];
   };
 
   if (loading) {
@@ -318,7 +339,7 @@ const MedicineList = () => {
                 <div>
                   <p className="text-sm text-gray-400">Available</p>
                   <p className="text-2xl font-bold text-white">
-                    {medicines.filter(m => m.status === 'available').length}
+                    {medicines.filter(m => (m.Status || m.status) === 'available').length}
                   </p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-400" />
@@ -331,7 +352,7 @@ const MedicineList = () => {
                 <div>
                   <p className="text-sm text-gray-400">Low Stock</p>
                   <p className="text-2xl font-bold text-white">
-                    {medicines.filter(m => m.status === 'low_stock').length}
+                    {medicines.filter(m => (m.Status || m.status) === 'low_stock').length}
                   </p>
                 </div>
                 <AlertTriangle className="w-8 h-8 text-yellow-400" />
@@ -344,7 +365,7 @@ const MedicineList = () => {
                 <div>
                   <p className="text-sm text-gray-400">Expiring Soon</p>
                   <p className="text-2xl font-bold text-white">
-                    {medicines.filter(m => isExpiringSoon(m.expiryDate)).length}
+                    {medicines.filter(m => isExpiringSoon(m.ExpiryDate || m.expiryDate)).length}
                   </p>
                 </div>
                 <Clock className="w-8 h-8 text-orange-400" />
@@ -362,9 +383,9 @@ const MedicineList = () => {
             <div className="space-y-4">
               {filteredMedicines.map((medicine) => (
                 <div
-                  key={medicine.id}
+                  key={medicine.MedicineID || medicine.id}
                   className={`flex flex-col lg:flex-row lg:items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all ${
-                    isExpired(medicine.expiryDate) ? 'border-red-500/50 bg-red-500/5' : ''
+                    isExpired(medicine.ExpiryDate || medicine.expiryDate) ? 'border-red-500/50 bg-red-500/5' : ''
                   }`}
                 >
                   <div className="flex-1 space-y-3">
@@ -374,23 +395,23 @@ const MedicineList = () => {
                           <Pill className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-white">{medicine.name}</h3>
-                          <p className="text-sm text-gray-400">{medicine.genericName}</p>
+                          <h3 className="font-semibold text-white">{medicine.Name || medicine.name}</h3>
+                          <p className="text-sm text-gray-400">{medicine.GenericName || medicine.genericName || 'N/A'}</p>
                           <div className="flex items-center space-x-4 text-sm text-gray-400 mt-1">
-                            <span>{medicine.manufacturer}</span>
-                            <span>{medicine.dosage} {medicine.form}</span>
-                            <span>Qty: {medicine.quantity}</span>
+                            <span>{medicine.Manufacturer || medicine.manufacturer || 'N/A'}</span>
+                            <span>{medicine.Dosage || medicine.dosage || 'N/A'} {medicine.Form || medicine.form || 'N/A'}</span>
+                            <span>Qty: {medicine.Quantity || medicine.quantity}</span>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Badge className={getStatusColor(medicine.status)}>
-                          {medicine.status.replace('_', ' ')}
+                        <Badge className={getStatusColor(medicine.Status || medicine.status)}>
+                          {(medicine.Status || medicine.status || '').replace('_', ' ')}
                         </Badge>
-                        <Badge className={getCategoryColor(medicine.category)}>
-                          {medicine.category}
+                        <Badge className={getCategoryColor(medicine.Category || medicine.category)}>
+                          {medicine.Category || medicine.category || 'General'}
                         </Badge>
-                        {medicine.prescriptionRequired && (
+                        {(medicine.PrescriptionRequired || medicine.prescriptionRequired) && (
                           <Badge className="bg-purple-100 text-purple-800">
                             Prescription Required
                           </Badge>
@@ -401,24 +422,24 @@ const MedicineList = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
                         <span className="text-gray-400">Price:</span>
-                        <span className="text-white ml-2">${medicine.price}</span>
+                        <span className="text-white ml-2">${medicine.Price || medicine.price || 'N/A'}</span>
                       </div>
                       <div>
                         <span className="text-gray-400">Expiry:</span>
                         <span className={`ml-2 ${
-                          isExpired(medicine.expiryDate) ? 'text-red-400' : 
-                          isExpiringSoon(medicine.expiryDate) ? 'text-orange-400' : 'text-white'
+                          isExpired(medicine.ExpiryDate || medicine.expiryDate) ? 'text-red-400' : 
+                          isExpiringSoon(medicine.ExpiryDate || medicine.expiryDate) ? 'text-orange-400' : 'text-white'
                         }`}>
-                          {new Date(medicine.expiryDate).toLocaleDateString()}
+                          {new Date(medicine.ExpiryDate || medicine.expiryDate).toLocaleDateString()}
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-400">Batch:</span>
-                        <span className="text-white ml-2">{medicine.batchNumber}</span>
+                        <span className="text-white ml-2">{medicine.BatchNumber || medicine.batchNumber || 'N/A'}</span>
                       </div>
                       <div>
                         <span className="text-gray-400">ID:</span>
-                        <span className="text-white ml-2">#{medicine.id}</span>
+                        <span className="text-white ml-2">#{medicine.MedicineID || medicine.id}</span>
                       </div>
                     </div>
                   </div>
@@ -427,7 +448,7 @@ const MedicineList = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/medicines/${medicine.id}`)}
+                      onClick={() => navigate(`/medicines/${medicine.MedicineID || medicine.id}`)}
                       className="border-white/20 text-white hover:bg-white/10"
                     >
                       <Eye className="w-4 h-4 mr-1" />
@@ -436,7 +457,7 @@ const MedicineList = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/medicines/${medicine.id}/edit`)}
+                      onClick={() => navigate(`/medicines/${medicine.MedicineID || medicine.id}/edit`)}
                       className="border-white/20 text-white hover:bg-white/10"
                     >
                       <Edit className="w-4 h-4 mr-1" />
@@ -445,7 +466,7 @@ const MedicineList = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(medicine.id)}
+                      onClick={() => handleDelete(medicine.MedicineID || medicine.id)}
                       className="border-red-500/30 text-red-400 hover:bg-red-500/10"
                     >
                       <Trash2 className="w-4 h-4 mr-1" />

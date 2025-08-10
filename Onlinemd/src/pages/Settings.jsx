@@ -83,6 +83,7 @@ const Settings = () => {
   const handlePreferencesChange = (key, value) => {
     setPreferences(prev => ({ ...prev, [key]: value }));
   };
+  
 
   const renderProfileTab = () => (
     <div className="space-y-6">
