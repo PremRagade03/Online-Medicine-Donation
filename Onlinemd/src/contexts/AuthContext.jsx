@@ -1,8 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
-// import { userService } from '@/services/userService'; // Comment out real service
-import { mockUserService as userService } from '@/services/mockUserService'; // Use mock service
+import { userService } from '@/services/userService'; // Changed to named import
 
 const AuthContext = createContext();
 
@@ -24,11 +22,9 @@ export const AuthProvider = ({ children }) => {
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
-        console.log('Found stored user:', userData);
         setUser(userData);
         setIsAuthenticated(true);
       } catch (error) {
-        console.error('Error parsing stored user:', error);
         localStorage.removeItem('medishare_user');
       }
     }
@@ -45,6 +41,7 @@ export const AuthProvider = ({ children }) => {
       if (response && response.user && response.token) {
         const user = response.user;
         console.log('Setting user:', user);
+        
         setUser(user);
         setIsAuthenticated(true);
         localStorage.setItem('medishare_user', JSON.stringify(user));
@@ -71,25 +68,108 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('medishare_user');
-    localStorage.removeItem('token');
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out.",
-    });
+  const register = async (userData) => {
+    try {
+      console.log('Attempting registration with:', userData);
+      const response = await userService.registerUser(userData);
+      
+      console.log('Registration response:', response);
+      
+      if (response && response.user) {
+        toast({
+          title: "Registration successful!",
+          description: "Please check your email to verify your account.",
+        });
+        
+        return { success: true, user: response.user };
+      } else {
+        console.error('Invalid registration response format:', response);
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast({
+        title: "Registration failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    }
   };
 
+  const logout = async () => {
+    try {
+      // Call backend logout if needed
+      await userService.logoutUser();
+    } catch (error) {
+      console.error('Backend logout error:', error);
+      // Continue with local logout even if backend fails
+    } finally {
+      // Always perform local cleanup
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('medishare_user');
+      localStorage.removeItem('token');
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+    }
+  };
 
+  const updateUserProfile = async (userData) => {
+    try {
+      if (!user || !user.id) {
+        throw new Error('No user logged in');
+      }
+
+      const response = await userService.updateUserProfile(user.id, userData);
+      
+      if (response && response.user) {
+        const updatedUser = response.user;
+        setUser(updatedUser);
+        localStorage.setItem('medishare_user', JSON.stringify(updatedUser));
+        
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been successfully updated.",
+        });
+        
+        return { success: true, user: updatedUser };
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Profile update error:', error);
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update profile.",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    }
+  };
+
+  const clearStorage = () => {
+    localStorage.removeItem('medishare_user');
+    localStorage.removeItem('token');
+    setUser(null);
+    setIsAuthenticated(false);
+    toast({
+      title: "Storage cleared",
+      description: "Please log in again.",
+    });
+  };
 
   const value = {
     user,
     isAuthenticated,
     loading,
     login,
+    register,
     logout,
+    updateUserProfile,
+    clearStorage,
   };
 
   return (

@@ -76,17 +76,20 @@ const UserCreate = () => {
 
     try {
       setLoading(true);
-      const userData = {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-        phone: formData.phone,
-        address: formData.address,
-        isActive: formData.isActive
-      };
+      const roleMap = {
+  donor: 'User',
+  hospital: 'Hospital',
+  ngo: 'NGO',
+  admin: 'Admin'
+};
 
-      await userService.createUser(userData);
+const userData = {
+  ...formData,
+  role: roleMap[formData.role]
+};
+
+await userService.registerUser(userData);
+
       
       toast({
         title: "Success",
@@ -106,14 +109,14 @@ const UserCreate = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
+    <div className="container max-w-2xl p-6 mx-auto">
       <div className="flex items-center mb-6">
         <Button
           variant="outline"
           onClick={() => navigate('/users')}
           className="mr-4"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
         <h1 className="text-3xl font-bold text-white">Create New User</h1>
@@ -121,14 +124,14 @@ const UserCreate = () => {
 
       <Card className="bg-white/10 backdrop-blur-sm border-white/20">
         <CardHeader>
-          <CardTitle className="text-white flex items-center">
-            <UserPlus className="mr-2 h-5 w-5" />
+          <CardTitle className="flex items-center text-white">
+            <UserPlus className="w-5 h-5 mr-2" />
             User Information
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-white">Name *</Label>
                 <Input
@@ -140,7 +143,7 @@ const UserCreate = () => {
                   className={errors.name ? 'border-red-500' : ''}
                 />
                 {errors.name && (
-                  <p className="text-red-500 text-sm">{errors.name}</p>
+                  <p className="text-sm text-red-500">{errors.name}</p>
                 )}
               </div>
 
@@ -156,7 +159,7 @@ const UserCreate = () => {
                   className={errors.email ? 'border-red-500' : ''}
                 />
                 {errors.email && (
-                  <p className="text-red-500 text-sm">{errors.email}</p>
+                  <p className="text-sm text-red-500">{errors.email}</p>
                 )}
               </div>
 
@@ -172,7 +175,7 @@ const UserCreate = () => {
                   className={errors.password ? 'border-red-500' : ''}
                 />
                 {errors.password && (
-                  <p className="text-red-500 text-sm">{errors.password}</p>
+                  <p className="text-sm text-red-500">{errors.password}</p>
                 )}
               </div>
 
@@ -188,7 +191,7 @@ const UserCreate = () => {
                   className={errors.confirmPassword ? 'border-red-500' : ''}
                 />
                 {errors.confirmPassword && (
-                  <p className="text-red-500 text-sm">{errors.confirmPassword}</p>
+                  <p className="text-sm text-red-500">{errors.confirmPassword}</p>
                 )}
               </div>
 
@@ -201,13 +204,14 @@ const UserCreate = () => {
                   onChange={handleChange}
                   className={`w-full px-3 py-2 border rounded-md bg-white/10 text-white border-white/20 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.role ? 'border-red-500' : ''}`}
                 >
-                  <option value="donor">Donor</option>
-                  <option value="hospital">Hospital</option>
-                  <option value="ngo">NGO</option>
-                  <option value="admin">Admin</option>
+                  <option value="User">Donor</option>
+               <option value="Hospital">Hospital</option>
+     <option value="NGO">NGO</option>
+     <option value="Admin">Admin</option>
+
                 </select>
                 {errors.role && (
-                  <p className="text-red-500 text-sm">{errors.role}</p>
+                  <p className="text-sm text-red-500">{errors.role}</p>
                 )}
               </div>
 
@@ -232,7 +236,7 @@ const UserCreate = () => {
                 onChange={handleChange}
                 placeholder="Enter address"
                 rows="3"
-                className="w-full px-3 py-2 border rounded-md bg-white/10 text-white border-white/20 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 text-white border rounded-md bg-white/10 border-white/20 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
 
@@ -243,7 +247,7 @@ const UserCreate = () => {
                 name="isActive"
                 checked={formData.isActive}
                 onChange={handleChange}
-                className="rounded border-white/20 bg-white/10 text-green-500 focus:ring-green-500"
+                className="text-green-500 rounded border-white/20 bg-white/10 focus:ring-green-500"
               />
               <Label htmlFor="isActive" className="text-white">Active User</Label>
             </div>
@@ -262,7 +266,7 @@ const UserCreate = () => {
                 disabled={loading}
                 className="bg-green-600 hover:bg-green-700"
               >
-                <Save className="mr-2 h-4 w-4" />
+                <Save className="w-4 h-4 mr-2" />
                 {loading ? 'Creating...' : 'Create User'}
               </Button>
             </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
@@ -17,6 +16,7 @@ import { requestService } from '@/services/requestService';
 import { ngoService } from '@/services/ngoService';
 import { medicineService } from '@/services/medicineService';
 import { hospitalService } from '@/services/hospitalService';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -27,56 +27,99 @@ const AdminDashboard = () => {
   const [medicines, setMedicines] = useState([]);
 
   useEffect(() => {
-    // Load all data from localStorage
-    const savedDonations = localStorage.getItem('medishare_donations');
-    const savedOrders = localStorage.getItem('medishare_orders');
-    const savedRequests = localStorage.getItem('medishare_ngo_requests');
-    const savedMedicines = localStorage.getItem('medishare_medicines');
-    
-    if (savedDonations) setDonations(JSON.parse(savedDonations));
-    if (savedOrders) setOrders(JSON.parse(savedOrders));
-    if (savedRequests) setRequests(JSON.parse(savedRequests));
-    
-    if (savedMedicines) {
-      setMedicines(JSON.parse(savedMedicines));
-    } else {
-      // Initialize with sample medicine data if none exists
-      const sampleMedicines = [
-        {
-          MedicineID: 1,
-          Name: "Paracetamol 500mg",
-          Description: "Pain reliever and fever reducer",
-          ExpiryDate: "2024-12-31",
-          Quantity: 100,
-          DonorID: 1,
-          Status: "Verified",
-          CreatedAt: "2024-01-15T10:30:00Z"
-        },
-        {
-          MedicineID: 2,
-          Name: "Amoxicillin 250mg",
-          Description: "Antibiotic for bacterial infections",
-          ExpiryDate: "2024-08-15",
-          Quantity: 50,
-          DonorID: 2,
-          Status: "Pending",
-          CreatedAt: "2024-01-20T14:45:00Z"
-        },
-        {
-          MedicineID: 3,
-          Name: "Ibuprofen 400mg",
-          Description: "Anti-inflammatory pain medication",
-          ExpiryDate: "2025-03-20",
-          Quantity: 75,
-          DonorID: 1,
-          Status: "Donated",
-          CreatedAt: "2024-01-25T09:15:00Z"
-        }
-      ];
-      localStorage.setItem('medishare_medicines', JSON.stringify(sampleMedicines));
-      setMedicines(sampleMedicines);
-    }
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      // Load medicines and donations from API
+      const [medicinesData, donationsData] = await Promise.all([
+        medicineService.getAllMedicines(),
+        donationService.getAllDonations()
+      ]);
+      
+      setMedicines(medicinesData);
+      
+      // If no donations from API, use dummy data that matches backend structure
+      if (Array.isArray(donationsData) && donationsData.length > 0) {
+        setDonations(donationsData);
+      } else {
+        // Dummy donation data that matches your backend structure
+        const dummyDonations = [
+          {
+            donationId: 1,
+            medicineId: 1,
+            medicineName: "Paracetamol 500mg",
+            description: "Pain reliever and fever reducer",
+            expiryDate: "2026-01-01",
+            quantity: 100,
+            donorId: 1,
+            donorName: "Prem Ragade",
+            donorEmail: "prem@gmail.com",
+            donorPhone: "6263950195",
+            donorNotes: "Good condition, unopened",
+            status: "completed",
+            createdAt: "2025-08-10T03:06:26.590",
+            updatedAt: "2025-08-10T03:06:26.590",
+            medicineStatus: "available"
+          },
+          {
+            donationId: 2,
+            medicineId: 2,
+            medicineName: "Ibuprofen 400mg",
+            description: "Nonsteroidal anti-inflammatory drug",
+            expiryDate: "2025-12-15",
+            quantity: 80,
+            donorId: 1,
+            donorName: "Prem Ragade",
+            donorEmail: "prem@gmail.com",
+            donorPhone: "6263950195",
+            donorNotes: "From pharmacy surplus",
+            status: "completed",
+            createdAt: "2025-08-10T03:06:26.590",
+            updatedAt: "2025-08-10T03:06:26.590",
+            medicineStatus: "available"
+          },
+          {
+            donationId: 3,
+            medicineId: 3,
+            medicineName: "Amoxicillin 250mg",
+            description: "Antibiotic for bacterial infections",
+            expiryDate: "2025-10-30",
+            quantity: 50,
+            donorId: 1,
+            donorName: "Prem Ragade",
+            donorEmail: "prem@gmail.com",
+            donorPhone: "6263950195",
+            donorNotes: "Prescription medication",
+            status: "completed",
+            createdAt: "2025-08-10T03:06:26.590",
+            updatedAt: "2025-08-10T03:06:26.590",
+            medicineStatus: "available"
+          }
+        ];
+        setDonations(dummyDonations);
+      }
+      
+      // Load other data from localStorage for now (can be updated later)
+      const savedOrders = localStorage.getItem('medishare_orders');
+      const savedRequests = localStorage.getItem('medishare_ngo_requests');
+      
+      if (savedOrders) setOrders(JSON.parse(savedOrders));
+      if (savedRequests) setRequests(JSON.parse(savedRequests));
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load data from API",
+        variant: "destructive"
+      });
+      
+      // Fallback to localStorage for development
+      const savedDonations = localStorage.getItem('medishare_donations');
+      if (savedDonations) setDonations(JSON.parse(savedDonations));
+    }
+  };
 
   const stats = [
     {
@@ -115,11 +158,11 @@ const AdminDashboard = () => {
 
   const recentActivity = [
     ...donations.slice(-3).map(d => ({
-      id: d.id,
+      id: d.donationId,
       type: 'donation',
       title: `New donation: ${d.medicineName}`,
       subtitle: `By ${d.donorName}`,
-      time: new Date(d.dateAdded).toLocaleDateString(),
+      time: new Date(d.createdAt).toLocaleDateString(),
       icon: Package,
       color: 'text-green-400'
     })),
@@ -142,11 +185,11 @@ const AdminDashboard = () => {
       color: 'text-purple-400'
     })),
     ...medicines.slice(-3).map(m => ({
-      id: m.MedicineID,
+      id: m.MedicineId || m.medicineId,
       type: 'medicine',
-      title: `New medicine: ${m.Name}`,
-      subtitle: `Quantity: ${m.Quantity} • Status: ${m.Status}`,
-      time: new Date(m.CreatedAt).toLocaleDateString(),
+      title: `New medicine: ${m.Name || m.name}`,
+      subtitle: `Quantity: ${m.Quantity || m.quantity} • Status: ${m.Status || m.status}`,
+      time: new Date(m.CreatedAt || m.createdAt).toLocaleDateString(),
       icon: Pill,
       color: 'text-cyan-400'
     }))
@@ -165,29 +208,29 @@ const AdminDashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl p-6 border border-white/10"
+            className="p-6 border bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl border-white/10"
           >
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div className="flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
               <div>
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-xl flex items-center justify-center">
+                <div className="flex items-center mb-2 space-x-3">
+                  <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-xl">
                     <Shield className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <h1 className="text-4xl font-bold text-white">Admin Dashboard</h1>
-                    <p className="text-gray-400 text-lg">Monitor and manage the MediShare platform</p>
+                    <p className="text-lg text-gray-400">Monitor and manage the MediShare platform</p>
                   </div>
                 </div>
-                <p className="text-gray-300 mt-4 max-w-2xl">
+                <p className="max-w-2xl mt-4 text-gray-300">
                   Welcome back! Here's an overview of your platform's performance and recent activities.
                 </p>
               </div>
               <div className="flex items-center space-x-3">
-                <Badge variant="outline" className="border-green-400 text-green-400 px-4 py-2">
+                <Badge variant="outline" className="px-4 py-2 text-green-400 border-green-400">
                   <Shield className="w-4 h-4 mr-2" />
                   Administrator
                 </Badge>
-                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                <Button variant="outline" className="text-white border-white/20 hover:bg-white/10">
                   <ExternalLink className="w-4 h-4 mr-2" />
                   View Reports
                 </Button>
@@ -204,16 +247,16 @@ const AdminDashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card className="bg-gradient-to-br from-slate-800 to-slate-700 p-6 border border-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-xl hover:scale-105">
+                <Card className="p-6 transition-all duration-300 border bg-gradient-to-br from-slate-800 to-slate-700 border-white/10 hover:border-white/20 hover:shadow-xl hover:scale-105">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <p className="text-gray-400 text-sm font-medium mb-1">{stat.title}</p>
-                      <p className="text-3xl font-bold text-white mb-2">{stat.value}</p>
+                      <p className="mb-1 text-sm font-medium text-gray-400">{stat.title}</p>
+                      <p className="mb-2 text-3xl font-bold text-white">{stat.value}</p>
                       {stat.change && (
                         <div className="flex items-center space-x-1">
                           <TrendingUp className="w-4 h-4 text-green-400" />
-                          <span className="text-green-400 text-sm font-medium">{stat.change}</span>
-                          <span className="text-gray-400 text-xs">from last month</span>
+                          <span className="text-sm font-medium text-green-400">{stat.change}</span>
+                          <span className="text-xs text-gray-400">from last month</span>
                         </div>
                       )}
                     </div>
@@ -447,7 +490,7 @@ const AdminDashboard = () => {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="orders" className="space-y-6">
+              {/* <TabsContent value="orders" className="space-y-6">
                 <Card className="glass-effect border-blue-500/20">
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-6">
@@ -494,6 +537,7 @@ const AdminDashboard = () => {
                               >
                                 Manage
                               </Button>
+                              
                             </div>
                           </div>
                         ))}
@@ -501,9 +545,112 @@ const AdminDashboard = () => {
                     )}
                   </div>
                 </Card>
-              </TabsContent>
+              </TabsContent> */}
 
-              <TabsContent value="requests" className="space-y-6">
+<TabsContent value="orders" className="space-y-6">
+  <Card className="glass-effect border-blue-500/20">
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-semibold text-white">Hospital Orders</h3>
+        <Button
+          onClick={() => toast({
+            title: "📦 Orders Updated",
+            description: "All order changes are saved in localStorage.",
+          })}
+          variant="outline"
+          className="text-blue-400 border-blue-500/30"
+        >
+          Save Changes
+        </Button>
+      </div>
+
+      {orders.length === 0 ? (
+        <div className="py-8 text-center">
+          <Building2 className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+          <h4 className="mb-2 text-lg font-medium text-white">No orders yet</h4>
+          <p className="text-gray-400">Hospital orders will appear here</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {orders.map((order, index) => {
+            const medicine = medicines.find(m => m.Name === order.medicineName && m.Status === 'Verified');
+            const isAvailable = medicine && medicine.Quantity >= order.quantity;
+
+            const handleComplete = async () => {
+              if (!isAvailable) {
+                toast({
+                  title: "❌ Not Enough Medicine",
+                  description: `Only ${medicine ? medicine.Quantity : 0} units available. Required: ${order.quantity}`,
+                  variant: "destructive",
+                });
+                return;
+              }
+
+              try {
+                const updatedOrders = [...orders];
+                updatedOrders[index].status = 'completed';
+                setOrders(updatedOrders);
+                localStorage.setItem('medishare_orders', JSON.stringify(updatedOrders));
+
+                // Update medicine quantity via API
+                const updatedQuantity = medicine.Quantity - order.quantity;
+                const updatedMedicine = await medicineService.updateMedicine(medicine.MedicineID, {
+                  ...medicine,
+                  Quantity: updatedQuantity,
+                });
+                
+                const updatedMedicines = medicines.map(m => 
+                  m.MedicineID === medicine.MedicineID ? updatedMedicine : m
+                );
+                setMedicines(updatedMedicines);
+
+                toast({
+                  title: "✅ Order Completed",
+                  description: `Order for ${order.medicineName} completed.`,
+                });
+              } catch (error) {
+                console.error('Error completing order:', error);
+                toast({
+                  title: "❌ Error",
+                  description: "Failed to complete order. Please try again.",
+                  variant: "destructive",
+                });
+              }
+            };
+
+            return (
+              <div key={order.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+                <div>
+                  <h4 className="font-medium text-white">{order.medicineName}</h4>
+                  <p className="text-sm text-gray-400">
+                    By {order.hospitalName} • Qty: {order.quantity} • {new Date(order.orderDate).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={order.status === 'pending' ? 'secondary' : 'default'}>
+                    {order.status}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={isAvailable ? "text-green-400 border-green-400" : "text-red-400 border-red-400"}
+                    onClick={handleComplete}
+                    disabled={order.status === 'completed'}
+                  >
+                    {order.status === 'completed' ? 'Completed' : isAvailable ? 'Complete' : 'Unavailable'}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </Card>
+</TabsContent>
+
+
+              {/* <TabsContent value="requests" className="space-y-6">
                 <Card className="glass-effect border-purple-500/20">
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-6">
@@ -564,7 +711,120 @@ const AdminDashboard = () => {
                     )}
                   </div>
                 </Card>
+              </TabsContent> */}
+
+              <TabsContent value="requests" className="space-y-6">
+                <Card className="glass-effect border-purple-500/20">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-semibold text-white">NGO Requests</h3>
+                      <Button
+                        onClick={() => toast({
+                          title: "✅ Requests Synced",
+                          description: "Request updates saved to localStorage",
+                        })}
+                        variant="outline"
+                        className="text-purple-400 border-purple-500/30"
+                      >
+                        Save Changes
+                      </Button>
+                    </div>
+
+                    {requests.length === 0 ? (
+                      <div className="py-8 text-center">
+                        <Users className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                        <h4 className="mb-2 text-lg font-medium text-white">No requests yet</h4>
+                        <p className="text-gray-400">NGO requests will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {requests.map((request, index) => {
+                          const matchingMedicine = medicines.find(m => m.Name === request.medicineName && m.Status === 'Verified');
+                          const isEnough = matchingMedicine && matchingMedicine.Quantity >= request.quantity;
+
+                          const handleFulfill = async () => {
+                            if (!isEnough) {
+                              toast({
+                                title: "❌ Not Enough Medicine",
+                                description: `Only ${matchingMedicine ? matchingMedicine.Quantity : 0} units available for "${request.medicineName}". Needed: ${request.quantity}`,
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+
+                            try {
+                              const updatedRequests = [...requests];
+                              updatedRequests[index].status = 'fulfilled';
+                              setRequests(updatedRequests);
+                              localStorage.setItem('medishare_ngo_requests', JSON.stringify(updatedRequests));
+
+                              // Update medicine quantity via API
+                              const updatedQuantity = matchingMedicine.Quantity - request.quantity;
+                              const updatedMedicine = await medicineService.updateMedicine(matchingMedicine.MedicineID, {
+                                ...matchingMedicine,
+                                Quantity: updatedQuantity,
+                              });
+                              
+                              const updatedMedicines = medicines.map(m => 
+                                m.MedicineID === matchingMedicine.MedicineID ? updatedMedicine : m
+                              );
+                              setMedicines(updatedMedicines);
+
+                              toast({
+                                title: "✅ Request Fulfilled",
+                                description: `Request for ${request.medicineName} fulfilled and quantity updated.`,
+                              });
+                            } catch (error) {
+                              console.error('Error fulfilling request:', error);
+                              toast({
+                                title: "❌ Error",
+                                description: "Failed to fulfill request. Please try again.",
+                                variant: "destructive",
+                              });
+                            }
+                          };
+
+                          return (
+                            <div key={request.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+                              <div>
+                                <h4 className="font-medium text-white">{request.medicineName}</h4>
+                                <p className="text-sm text-gray-400">
+                                  By {request.ngoName} • Qty: {request.quantity} • {request.beneficiaries} beneficiaries
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={request.status === 'open' ? 'default' : 'secondary'}>
+                                  {request.status}
+                                </Badge>
+                                <Badge variant="outline" className={
+                                  request.urgency === 'high' ? 'text-red-400 border-red-400' :
+                                  request.urgency === 'medium' ? 'text-yellow-400 border-yellow-400' :
+                                  'text-green-400 border-green-400'
+                                }>
+                                  {request.urgency}
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className={isEnough ? 'text-green-400 border-green-400' : 'text-red-400 border-red-400'}
+                                  onClick={handleFulfill}
+                                  disabled={request.status === 'fulfilled'}
+                                >
+                                  {request.status === 'fulfilled' ? 'Fulfilled' : isEnough ? 'Fulfill' : 'Unavailable'}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </Card>
               </TabsContent>
+
+
+
+
             </Tabs>
           </motion.div>
         </div>

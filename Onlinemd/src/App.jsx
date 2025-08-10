@@ -28,6 +28,7 @@ import HospitalList from '@/pages/HospitalList';
 import MedicineList from '@/pages/MedicineList';
 import SettingsPage from '@/pages/SettingsPage';
 import Analytics from '@/pages/Analytics';
+import NewRequest from '@/pages/NewRequest';
 
 // Signup Pages
 import DonorSignup from '@/pages/signup/DonorSignup';
@@ -52,20 +53,14 @@ function getUserRoute(role) {
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, isAuthenticated } = useAuth();
 
-  console.log('ProtectedRoute - user:', user, 'isAuthenticated:', isAuthenticated, 'allowedRoles:', allowedRoles);
-
   if (!isAuthenticated) {
-    console.log('User not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
-  
+
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    console.log('User role not allowed:', user?.role, 'allowed roles:', allowedRoles);
-    // Redirect to user's appropriate dashboard instead of login to prevent infinite loop
-    return <Navigate to={getUserRoute(user?.role)} replace />;
+    return <Navigate to="/login" replace />;
   }
 
-  console.log('User authorized, rendering protected content');
   return children;
 }
 
@@ -74,8 +69,8 @@ function AppRoutes() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-400"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-900">
+        <div className="w-16 h-16 border-b-2 border-green-400 rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -138,11 +133,25 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+       <Route path="/requests" element={<RequestList />} />
+        <Route path="/requests/new" element={<NewRequest />} />
+
       <Route
         path="/admin"
         element={
           <ProtectedRoute allowedRoles={['Admin']}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Pages */}
+      <Route
+        path="/medicines"
+        element={
+          <ProtectedRoute allowedRoles={['Admin']}>
+            <MedicinePage />
           </ProtectedRoute>
         }
       />
@@ -154,126 +163,30 @@ function AppRoutes() {
       <Route path="/register/ngo" element={<NgoSignup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
+      <Route path="/admin/add-user" element={<UserCreate />} />
+      {/* Removed problematic routes that reference undefined components */}
+      
       {/* Admin Resource Pages */}
-      <Route 
-        path="/users" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <UserList />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/users/new" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <UserCreate />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/donations" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <DonationList />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/requests" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <RequestList />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/ngos" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <NGOList />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/hospitals" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <HospitalList />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/medicines" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <MedicineList />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/medicine-page" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <MedicinePage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/settings" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <SettingsPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/analytics" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <Analytics />
-          </ProtectedRoute>
-        } 
-      />
+      <Route path="/users" element={<UserList />} />
+      <Route path="/users/new" element={<UserCreate />} />
+      <Route path="/donations" element={<DonationList />} />
+      <Route path="/requests" element={<RequestList />} />
+      <Route path="/ngos" element={<NGOList />} />
+      <Route path="/hospitals" element={<HospitalList />} />
+      <Route path="/medicinelist" element={<MedicineList />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/analytics" element={<Analytics />} />
+      <Route path="/test" element={<TestPage />} />
 
       {/* Test Routes */}
-      <Route 
-        path="/test" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <TestConnection />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/test-page" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <TestPage />
-          </ProtectedRoute>
-        } 
-      />
+      <Route path="/test-connection" element={<TestConnection />} />
       <Route path="/login-test" element={<LoginTest />} />
-      <Route 
-        path="/debug" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <DebugPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/role-test" 
-        element={
-          <ProtectedRoute allowedRoles={['Admin']}>
-            <RoleTest />
-          </ProtectedRoute>
-        } 
-      />
-      
+      <Route path="/debug" element={<DebugPage />} />
+      <Route path="/role-test" element={<RoleTest />} />
+
       {/* Default Route */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      
+
       {/* Catch-all route for invalid URLs */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

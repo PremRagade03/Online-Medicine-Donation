@@ -13,6 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { ClipboardList } from 'lucide-react';
+import { donationService } from '@/services/donationService';
 
 const NGODashboard = () => {
   const { user } = useAuth();
@@ -20,6 +22,7 @@ const NGODashboard = () => {
   const [requests, setRequests] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [newRequest, setNewRequest] = useState({
     medicineName: '',
     quantity: '',
@@ -29,101 +32,92 @@ const NGODashboard = () => {
   });
 
   useEffect(() => {
-    // Load donations and requests from localStorage
-    const savedDonations = localStorage.getItem('medishare_donations');
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load donations from API
+      const donationsData = await donationService.getAllDonations();
+      setDonations(Array.isArray(donationsData) ? donationsData : []);
+      
+      // Load requests from localStorage for now
     const savedRequests = localStorage.getItem('medishare_ngo_requests');
-    
+      if (savedRequests) {
+        setRequests(JSON.parse(savedRequests));
+      } else {
+        // Initialize with sample NGO requests if none exist
+        const sampleRequests = [
+          {
+            id: 1,
+            medicineName: "Paracetamol 500mg",
+            quantity: "100 tablets",
+            urgency: "high",
+            description: "For emergency relief operations",
+            beneficiaries: "50 families",
+            status: "pending",
+            dateCreated: new Date().toISOString()
+          },
+          {
+            id: 2,
+            medicineName: "Amoxicillin 250mg",
+            quantity: "50 capsules",
+            urgency: "medium",
+            description: "For community health program",
+            beneficiaries: "25 children",
+            status: "approved",
+            dateCreated: new Date(Date.now() - 86400000).toISOString()
+          }
+        ];
+        localStorage.setItem('medishare_ngo_requests', JSON.stringify(sampleRequests));
+        setRequests(sampleRequests);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      
+      // Fallback to localStorage for development
+      const savedDonations = localStorage.getItem('medishare_donations');
     if (savedDonations) {
       setDonations(JSON.parse(savedDonations));
     } else {
       // Initialize with sample donations if none exist
       const sampleDonations = [
         {
-          id: 1,
+            donationId: 1,
           medicineName: "Paracetamol 500mg",
-          quantity: "200 tablets",
+            quantity: 200,
           expiryDate: "2024-12-31",
-          donorName: "City Pharmacy",
-          status: "available",
+            donorName: "Prem Ragade",
+            status: "completed",
+            medicineStatus: "available",
           description: "Pain reliever and fever reducer"
         },
         {
-          id: 2,
+            donationId: 2,
           medicineName: "Amoxicillin 250mg",
-          quantity: "50 capsules",
+            quantity: 50,
           expiryDate: "2024-08-15",
-          donorName: "Health Plus Medical",
-          status: "available",
+            donorName: "Prem Ragade",
+            status: "completed",
+            medicineStatus: "available",
           description: "Antibiotic for bacterial infections"
-        },
-        {
-          id: 3,
-          medicineName: "Ibuprofen 400mg",
-          quantity: "100 tablets",
-          expiryDate: "2025-03-20",
-          donorName: "Community Clinic",
-          status: "available",
-          description: "Anti-inflammatory pain medication"
-        },
-        {
-          id: 4,
-          medicineName: "Vitamin C 1000mg",
-          quantity: "75 tablets",
-          expiryDate: "2025-06-15",
-          donorName: "Wellness Center",
-          status: "available",
-          description: "Immune system support"
-        },
-        {
-          id: 5,
-          medicineName: "Omeprazole 20mg",
-          quantity: "30 capsules",
-          expiryDate: "2024-11-30",
-          donorName: "Family Medical Store",
-          status: "available",
-          description: "Acid reflux medication"
         }
       ];
       localStorage.setItem('medishare_donations', JSON.stringify(sampleDonations));
       setDonations(sampleDonations);
     }
     
-    if (savedRequests) {
-      setRequests(JSON.parse(savedRequests));
-    } else {
-      // Initialize with sample NGO requests if none exist
-      const sampleRequests = [
-        {
-          id: 1,
-          ngoId: user.id,
-          ngoName: user.name,
-          medicineName: "Paracetamol 500mg",
-          quantity: "500 tablets",
-          urgency: "high",
-          description: "Urgently needed for community health camp",
-          beneficiaries: "250",
-          status: "open",
-          dateCreated: "2024-01-15T10:30:00Z",
-          responses: []
-        },
-        {
-          id: 2,
-          ngoId: user.id,
-          ngoName: user.name,
-          medicineName: "Amoxicillin 250mg",
-          quantity: "100 capsules",
-          urgency: "medium",
-          description: "For children's health program",
-          beneficiaries: "50",
-          status: "fulfilled",
-          dateCreated: "2024-01-10T14:45:00Z",
-          responses: []
-        }
-      ];
-      localStorage.setItem('medishare_ngo_requests', JSON.stringify(sampleRequests));
-      setRequests(sampleRequests);
+      toast({
+        title: "Connection Error",
+        description: "Using offline data. Please check your connection.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [user.id]);
+  };
 
   const handleCreateRequest = (e) => {
     e.preventDefault();
@@ -160,7 +154,7 @@ const NGODashboard = () => {
   const handleRequestMedicine = (donation) => {
     toast({
       title: "Request sent!",
-      description: `Your request for ${donation.medicineName} has been sent to the donor.`,
+      description: `Your request for ${donation.medicineName} has been sent to the admin.`,
     });
   };
 
@@ -464,10 +458,13 @@ const NGODashboard = () => {
 
         {/* Create Request Dialog */}
         <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
-          <DialogContent className="bg-slate-800 border-purple-500/20 text-white">
+          <DialogContent className="bg-slate-800 border-purple-500/20 text-white" aria-describedby="request-dialog-description">
             <DialogHeader>
               <DialogTitle className="text-white">Create Medicine Request</DialogTitle>
             </DialogHeader>
+            <div id="request-dialog-description" className="sr-only">
+              Form to create a medicine request with details like medicine name, quantity, beneficiaries, urgency, and description
+            </div>
             
             <form onSubmit={handleCreateRequest} className="space-y-4">
               <div>

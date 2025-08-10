@@ -1,83 +1,221 @@
-// User Service - ASP.NET Core Integration
+
+// userService.js
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:44344/api';
 
-// Helper function to handle API responses
-const handleApiResponse = async (response) => {
-  const contentType = response.headers.get('content-type');
-
-  if (!response.ok) {
-    let errorMessage = 'Request failed';
-
-    switch (response.status) {
-      case 400: errorMessage = 'Bad request: Please check your input data'; break;
-      case 401: errorMessage = 'Unauthorized: Please check your credentials'; break;
-      case 403: errorMessage = 'Forbidden'; break;
-      case 404: errorMessage = 'Not found'; break;
-      case 409: errorMessage = 'Conflict: Email may already be in use'; break;
-      case 422: errorMessage = 'Validation error'; break;
-      case 500: errorMessage = 'Internal server error'; break;
-      default:  errorMessage = `Error ${response.status}`;
-    }
-
-    try {
-      if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
-        errorMessage = data?.message || data?.error || errorMessage;
-      } else {
-        const text = await response.text();
-        if (text) errorMessage = text;
-      }
-    } catch (err) {
-      console.warn('Unable to parse error body:', err);
-    }
-
-    console.error('API Error:', {
-      status: response.status,
-      url: response.url,
-      message: errorMessage
-    });
-
-    throw new Error(errorMessage);
-  }
-
-  if (contentType && contentType.includes('application/json')) {
-    return await response.json();
-  }
-
-  return await response.text(); // fallback
-};
-
-
-
 export const userService = {
-  // Test API connection
+  // Test connection to backend
   async testConnection() {
     try {
-      console.log('Testing connection to:', API_BASE_URL);
+      console.log('Testing connection to:', `${API_BASE_URL}/auth/login`);
+      
+      // Try a simple OPTIONS request to test if server is reachable
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
+        method: 'OPTIONS',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: 'test@test.com', password: 'test' }),
+        // Add timeout to avoid hanging
+        signal: AbortSignal.timeout(5000), // 5 second timeout
       });
-      console.log('Connection test response:', response.status);
-      // If we get a 401 (Unauthorized), it means the server is running but credentials are wrong
-      // If we get a 400 (Bad Request), it means the server is running
-      return response.status === 401 || response.status === 400;
+      
+      // Even if OPTIONS returns an error, if we get a response, server is reachable
+      return true;
     } catch (error) {
       console.error('Connection test failed:', error);
+      
+      // If it's a timeout or network error, server is not reachable
+      if (error.name === 'AbortError' || error.name === 'TypeError') {
+        return false;
+      }
+      
+      // If it's any other error, server might still be reachable
+      return true;
+    }
+  },
+
+  // Alternative connection test - just try to reach the base URL
+  async testConnectionSimple() {
+    try {
+      const baseUrl = API_BASE_URL.replace('/api', '');
+      const response = await fetch(baseUrl, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3000), // 3 second timeout
+      });
+      
+      return true; // If we get any response, server is reachable
+    } catch (error) {
+      console.error('Simple connection test failed:', error);
       return false;
     }
   },
 
-  // Get all users
+  // Legacy method name for backward compatibility
+  async register(userData) {
+    return this.registerUser(userData);
+  },
+
+  // Login user - matches your AuthController login endpoint
+  async loginUser(credentials) {
+    try {
+      console.log('Making login request to:', `${API_BASE_URL}/auth/login`);
+      
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          Email: credentials.email, // Your backend expects Email (capital E)
+          Password: credentials.password // Your backend expects Password (capital P)
+        }),
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Login error response:', errorText);
+        throw new Error(errorText || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Login response data:', data);
+      return data;
+    } catch (error) {
+      console.error('Error logging in user:', error);
+      
+      // More specific error messages
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        throw new Error('Unable to connect to server. Please check if the backend is running on https://localhost:44344');
+      } else if (error.message.includes('ERR_CONNECTION_REFUSED')) {
+        throw new Error('Connection refused. Please ensure the backend server is running on port 44344.');
+      }
+      
+      throw error;
+    }
+  },
+
+  // Register user - matches your AuthController register endpoint
+  async registerUser(userData) {
+    try {
+      console.log('Making register request to:', `${API_BASE_URL}/auth/register`);
+      
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          Name: userData.name,
+          Email: userData.email,
+          Password: userData.password,
+          Phone: userData.phone,
+          Address: userData.address,
+          Role: userData.role || 'user', // Default to 'user' role
+          // NGO specific fields if role is 'ngo'
+          OrganizationName: userData.organizationName,
+          ContactPerson: userData.contactPerson
+        }),
+      });
+      
+      console.log('Register response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Registration error response:', errorText);
+        throw new Error(errorText || `HTTP ${response.status}: Registration failed`);
+      }
+      
+      const data = await response.text(); // Your register endpoint returns just a string message
+      return { message: data };
+    } catch (error) {
+      console.error('Error registering user:', error);
+      
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        throw new Error('Unable to connect to server. Please check if the backend is running.');
+      }
+      
+      throw error;
+    }
+  },
+
+  // Get user profile - uses Users controller
+  async getUserProfile(userId) {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to fetch user profile');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  },
+
+  // Update user profile - uses Users controller
+  async updateUserProfile(userId, userData) {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          UserId: parseInt(userId),
+          Name: userData.name,
+          Email: userData.email,
+          Phone: userData.phone,
+          Address: userData.address,
+          // Don't include password in updates unless specifically changing it
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to update profile');
+      }
+      
+      // PUT endpoint returns NoContent (204), so no JSON to parse
+      return { message: 'Profile updated successfully' };
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    }
+  },
+
+  // Get all users - uses Users controller (admin only)
   async getAllUsers() {
     try {
-      const response = await fetch(`${API_BASE_URL}/users`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      });
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to fetch users');
       }
+      
       return await response.json();
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -85,289 +223,101 @@ export const userService = {
     }
   },
 
-  // Get user by ID
-  async getUserById(userId) {
+  // Change password - uses your AuthController change-password endpoint
+  async changePassword(currentPassword, newPassword) {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch user');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      throw error;
-    }
-  },
-
-  // Create new user
-  async createUser(userData) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users`, {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify({
+          CurrentPassword: currentPassword,
+          NewPassword: newPassword
+        }),
       });
+      
       if (!response.ok) {
-        throw new Error('Failed to create user');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Password change failed');
       }
+      
       return await response.json();
     } catch (error) {
-      console.error('Error creating user:', error);
+      console.error('Error changing password:', error);
       throw error;
     }
   },
 
-  // Update user
-  async updateUser(userId, userData) {
+  // Delete user account - uses your AuthController delete endpoint
+  async deleteUserAccount(userId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update user');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw error;
-    }
-  },
-
-  // Delete user
-  async deleteUser(userId) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/auth/delete/${userId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
       });
+      
       if (!response.ok) {
-        throw new Error('Failed to delete user');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete account');
       }
+      
       return true;
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error('Error deleting user account:', error);
       throw error;
     }
   },
 
-  // User registration
-  async register(userData) {
+  // Logout user (client-side only since your backend doesn't have logout endpoint)
+  async logoutUser() {
     try {
-      console.log('Original registration data:', userData);
-  
-      // Clean up data based on role
-      let cleanedData = {};
-  
-      switch (userData.role?.toLowerCase()) {
-        case 'admin':
-          cleanedData = {
-            role: 'Admin',
-            name: userData.name,
-            email: userData.email,
-            password: userData.password,
-          };
-          break;
-  
-        case 'hospital':
-          cleanedData = {
-            role: 'Hospital',
-            name: userData.name,
-            email: userData.email,
-            password: userData.password,
-            phone: userData.phone,
-            address: userData.address,
-          };
-          break;
-  
-        case 'ngo':
-          cleanedData = {
-            role: 'Ngo',
-            organizationName: userData.organizationName,
-            contactPerson: userData.contactPerson,
-            email: userData.email,
-            password: userData.password,
-            phone: userData.phone,
-            address: userData.address,
-          };
-          break;
-  
-        case 'user':
-        default:
-          cleanedData = {
-            role: 'User',
-            name: userData.name,
-            email: userData.email,
-            password: userData.password,
-            phone: userData.phone,
-            address: userData.address,
-          };
-          break;
-      }
-  
-      console.log('Cleaned registration data:', cleanedData);
-  
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(cleanedData),
-      });
-  
-      console.log('Response status:', response.status);
-      return await handleApiResponse(response);
+      // No backend logout endpoint, so just return success
+      return true;
     } catch (error) {
-      console.error('Error in user registration:', error);
-  
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error('Network error: Unable to connect to the server. Make sure the backend is running.');
-      }
-  
-      if (error.message.includes('Failed to fetch')) {
-        throw new Error('Connection failed: Please ensure the backend server is running on https://localhost:44344');
-      }
-  
-      throw error;
+      console.error('Error logging out user:', error);
+      // Don't throw error for logout - continue with local cleanup
+      return true;
     }
   },
-  
-  
 
-
-  // User registration (legacy method)
-  async registerUser(userData) {
-    return this.register(userData);
-  },
-
-  // User login
-  async loginUser(credentials) {
+  // Verify email (placeholder - implement if you add email verification)
+  async verifyEmail(token) {
     try {
-      console.log('Sending login data:', credentials);
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      });
-      
-      const data = await handleApiResponse(response);
-      
-      // Handle different response formats from backend
-      if (data && data.token) {
-        // If backend provides user info directly
-        if (data.user) {
-          return { token: data.token, user: data.user };
-        }
-        
-        // If backend only provides token, try to decode it
-        try {
-          const tokenParts = data.token.split('.');
-          if (tokenParts.length === 3) {
-            const payload = JSON.parse(atob(tokenParts[1]));
-            const user = {
-              email: payload.email,
-              role: payload.role,
-              name: payload.email.split('@')[0] // Use email prefix as name for now
-            };
-            return { token: data.token, user };
-          } else {
-            // If token format is not JWT, use the role from credentials
-            const user = {
-              email: credentials.email,
-              role: credentials.role || 'User',
-              name: credentials.email.split('@')[0]
-            };
-            return { token: data.token, user };
-          }
-        } catch (error) {
-          console.error('Error decoding token:', error);
-          // Use the role from credentials instead of defaulting to 'User'
-          const user = {
-            email: credentials.email,
-            role: credentials.role || 'User',
-            name: credentials.email.split('@')[0]
-          };
-          return { token: data.token, user };
-        }
-      }
-      
-      return data;
+      // Placeholder implementation
+      throw new Error('Email verification not implemented in backend yet');
     } catch (error) {
-      console.error('Error in user login:', error);
+      console.error('Error verifying email:', error);
       throw error;
     }
   },
 
-  // Get user profile
-  async getUserProfile() {
+  // Reset password request (placeholder - implement if you add password reset)
+  async requestPasswordReset(email) {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/profile`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch profile');
-      }
-      return await response.json();
+      // Placeholder implementation
+      throw new Error('Password reset not implemented in backend yet');
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error requesting password reset:', error);
       throw error;
     }
   },
 
-  // Update user profile
-  async updateUserProfile(profileData) {
+  // Reset password (placeholder - implement if you add password reset)
+  async resetPassword(token, newPassword) {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(profileData),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
-      }
-      return await response.json();
+      // Placeholder implementation
+      throw new Error('Password reset not implemented in backend yet');
     } catch (error) {
-      console.error('Error updating profile:', error);
-      throw error;
-    }
-  },
-
-  // Search users
-  async searchUsers(searchTerm) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users/search?q=${encodeURIComponent(searchTerm)}`);
-      if (!response.ok) {
-        throw new Error('Failed to search users');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error searching users:', error);
-      throw error;
-    }
-  },
-
-  // Get users by role
-  async getUsersByRole(role) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users/role/${role}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch users by role');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching users by role:', error);
+      console.error('Error resetting password:', error);
       throw error;
     }
   }
-};       
+};

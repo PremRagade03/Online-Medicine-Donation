@@ -111,9 +111,11 @@ const SettingsPage = () => {
         title: "Error",
         description: "Failed to change password",
         variant: "destructive"
-      });
+      }); 
     }
+    
   };
+  
 
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);

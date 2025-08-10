@@ -19,86 +19,82 @@ import {
   Filter
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { toast } from '@/components/ui/use-toast';
 
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState('30d');
   const [loading, setLoading] = useState(true);
-
-  // Dummy data for analytics
-  const analyticsData = {
+  const [analyticsData] = useState({
     overview: {
-      totalUsers: 1247,
-      totalDonations: 892,
-      totalRequests: 456,
-      totalHospitals: 89,
-      totalNGOs: 34,
-      totalMedicines: 156,
-      totalRevenue: 45600,
+      totalUsers: 5,
+      totalDonations: 5,
+      totalRequests: 5,
+      totalHospitals: 5,
+      totalNGOs: 5,
+      totalMedicines: 5,
+      overallEngagement: 30, // Static sum of totalUsers, totalDonations, totalRequests, totalHospitals, totalNGOs, totalMedicines
       growthRate: 12.5
     },
     donations: {
-      monthly: [120, 145, 132, 189, 156, 178, 234, 198, 167, 189, 212, 245],
+      monthly: [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
       byStatus: [
-        { status: 'Approved', count: 456, percentage: 65 },
-        { status: 'Pending', count: 189, percentage: 27 },
-        { status: 'Rejected', count: 56, percentage: 8 }
+        { status: 'Completed', count: 2, percentage: 40 },
+        { status: 'Pending', count: 1, percentage: 20 },
+        { status: 'Approved', count: 1, percentage: 20 },
+        { status: 'Rejected', count: 1, percentage: 20 }
       ],
       byCategory: [
-        { category: 'Pain Relief', count: 234, percentage: 33 },
-        { category: 'Antibiotics', count: 156, percentage: 22 },
-        { category: 'Diabetes', count: 89, percentage: 13 },
-        { category: 'Cardiovascular', count: 78, percentage: 11 },
-        { category: 'Other', count: 145, percentage: 21 }
+        { category: 'Used', count: 2, percentage: 40 },
+        { category: 'Antibiotic', count: 2, percentage: 40 },
+        { category: 'Pain', count: 1, percentage: 20 }
       ]
     },
     requests: {
-      monthly: [45, 67, 54, 78, 89, 67, 98, 87, 76, 89, 98, 112],
+      monthly: [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
       byStatus: [
-        { status: 'Approved', count: 234, percentage: 51 },
-        { status: 'Pending', count: 156, percentage: 34 },
-        { status: 'Completed', count: 45, percentage: 10 },
-        { status: 'Rejected', count: 21, percentage: 5 }
+        { status: 'Pending', count: 2, percentage: 40 },
+        { status: 'Approved', count: 1, percentage: 20 },
+        { status: 'Rejected', count: 1, percentage: 20 },
+        { status: 'Completed', count: 1, percentage: 20 }
       ],
       byHospital: [
-        { hospital: 'City General', count: 45, percentage: 15 },
-        { hospital: 'Memorial Medical', count: 38, percentage: 13 },
-        { hospital: 'Community Health', count: 32, percentage: 11 },
-        { hospital: 'Regional Medical', count: 28, percentage: 9 },
-        { hospital: 'Others', count: 156, percentage: 52 }
+        { hospital: 'City Care Hospital', count: 1, percentage: 20 },
+        { hospital: 'Apex Hospital', count: 1, percentage: 20 },
+        { hospital: 'Sunrise Clinic', count: 1, percentage: 20 },
+        { hospital: 'Others', count: 2, percentage: 40 }
       ]
     },
     users: {
       byRole: [
-        { role: 'Donors', count: 567, percentage: 45 },
-        { role: 'Hospitals', count: 234, percentage: 19 },
-        { role: 'NGOs', count: 89, percentage: 7 },
-        { role: 'Admins', count: 12, percentage: 1 },
-        { role: 'Others', count: 345, percentage: 28 }
+        { role: 'Donors', count: 5, percentage: 50 },
+        { role: 'Hospitals', count: 5, percentage: 50 },
+        { role: 'NGOs', count: 5, percentage: 50 },
+        { role: 'Admins', count: 5, percentage: 50 },
+        { role: 'Others', count: 0, percentage: 0 }
       ],
-      growth: [89, 123, 156, 189, 234, 267, 289, 312, 345, 378, 412, 445]
+      growth: [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
     },
     topDonors: [
-      { name: 'John Smith', donations: 45, totalValue: 2340, lastDonation: '2024-01-15' },
-      { name: 'Sarah Johnson', donations: 38, totalValue: 1890, lastDonation: '2024-01-12' },
-      { name: 'Mike Wilson', donations: 32, totalValue: 1560, lastDonation: '2024-01-10' },
-      { name: 'Lisa Brown', donations: 28, totalValue: 1340, lastDonation: '2024-01-08' },
-      { name: 'David Lee', donations: 25, totalValue: 1200, lastDonation: '2024-01-05' }
+      { name: 'Prem Ragade', donations: 2, totalValue: 200, lastDonation: '2025-08-01' },
+      { name: 'Ravi Kumar', donations: 1, totalValue: 200, lastDonation: '2025-08-02' },
+      { name: 'Anjali Sharma', donations: 1, totalValue: 150, lastDonation: '2025-08-03' },
+      { name: 'Suresh Mehta', donations: 1, totalValue: 250, lastDonation: '2025-08-04' },
+      { name: 'Divya Nair', donations: 1, totalValue: 300, lastDonation: '2025-08-05' }
     ],
     topHospitals: [
-      { name: 'City General Hospital', requests: 67, medicines: 234, rating: 4.8 },
-      { name: 'Memorial Medical Center', requests: 54, medicines: 189, rating: 4.6 },
-      { name: 'Community Health Center', requests: 45, medicines: 156, rating: 4.4 },
-      { name: 'Regional Medical Hospital', requests: 38, medicines: 134, rating: 4.2 },
-      { name: 'University Medical Center', requests: 32, medicines: 112, rating: 4.0 }
+      { name: 'City Care Hospital', requests: 1, medicines: 10, rating: 4.8 },
+      { name: 'Apex Hospital', requests: 1, medicines: 5, rating: 4.6 },
+      { name: 'Sunrise Clinic', requests: 1, medicines: 7, rating: 4.4 },
+      { name: 'Hope Hospital', requests: 1, medicines: 12, rating: 4.2 },
+      { name: 'Global Hospital', requests: 1, medicines: 8, rating: 4.0 }
     ]
-  };
+  });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
+    setLoading(false);
+  }, [timeRange]);
 
   const formatNumber = (num) => {
     return num.toLocaleString();
@@ -173,14 +169,14 @@ const Analytics = () => {
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Total Revenue</p>
-              <p className="text-2xl font-bold text-white">{formatCurrency(analyticsData.overview.totalRevenue)}</p>
+              <p className="text-sm text-gray-400">Overall Engagement</p>
+              <p className="text-2xl font-bold text-white">{formatNumber(analyticsData.overview.overallEngagement)}</p>
               <div className="flex items-center mt-1">
                 {getGrowthIcon(22.1)}
                 <span className="text-green-400 text-sm ml-1">+22.1%</span>
               </div>
             </div>
-            <DollarSign className="w-8 h-8 text-yellow-400" />
+            <Activity className="w-8 h-8 text-yellow-400" />
           </div>
         </CardContent>
       </Card>
@@ -325,7 +321,7 @@ const Analytics = () => {
                 <div>
                   <span className="text-white font-medium">{donor.name}</span>
                   <div className="text-sm text-gray-400">
-                    {donor.donations} donations • {formatCurrency(donor.totalValue)}
+                    {donor.donations} donations • ${donor.totalValue}
                   </div>
                 </div>
               </div>
@@ -364,6 +360,30 @@ const Analytics = () => {
     </Card>
   );
 
+  const handleExportPDF = () => {
+    const input = document.getElementById('analytics-content');
+    html2canvas(input).then((canvas) => {
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF();
+      const width = pdf.internal.pageSize.getWidth();
+      const height = (canvas.height * width) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+      pdf.save('medi-share-analytics.pdf');
+      toast({
+        title: '📥 PDF Exported',
+        description: 'Analytics data has been downloaded as a PDF.',
+      });
+    });
+  };
+
+  const applyFilters = (e) => {
+    setTimeRange(e.target.value);
+    toast({
+      title: '🔍 Filters Applied',
+      description: `Showing data for last ${e.target.value === '7d' ? '7 days' : e.target.value === '30d' ? '30 days' : e.target.value === '90d' ? '90 days' : 'year'}.`,
+    });
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -376,7 +396,7 @@ const Analytics = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6" id="analytics-content">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -386,7 +406,7 @@ const Analytics = () => {
           <div className="flex items-center space-x-2">
             <select
               value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
+              onChange={applyFilters}
               className="px-3 py-2 bg-white/5 border border-white/20 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               <option value="7d">Last 7 days</option>
@@ -398,7 +418,7 @@ const Analytics = () => {
               <Filter className="w-4 h-4 mr-2" />
               Filters
             </Button>
-            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+            <Button onClick={handleExportPDF} variant="outline" className="border-white/20 text-white hover:bg-white/10">
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
@@ -436,4 +456,4 @@ const Analytics = () => {
   );
 };
 
-export default Analytics; 
+export default Analytics;

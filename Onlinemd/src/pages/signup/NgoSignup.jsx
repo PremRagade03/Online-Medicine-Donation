@@ -27,17 +27,40 @@ const NgoSignup = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // Sanitize zipCode input
+    const cleanedValue = name === 'zipCode'
+      ? value.replace(/[^\d]/g, '') // remove non-digit characters
+      : value;
+
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: cleanedValue,
     }));
   };
 
   const validateForm = () => {
-    const { ngoName, contactPerson, phone, email, password, confirmPassword } = formData;
+    const { ngoName, contactPerson, phone, email, password, confirmPassword, zipCode } = formData;
 
     if (!ngoName || !contactPerson || !phone || !email || !password || !confirmPassword) {
       toast({ title: "Validation Error", description: "Please fill in all required fields", variant: "destructive" });
+      return false;
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!emailRegex.test(email)) {
+      toast({ title: "Validation Error", description: "Email must be a valid @gmail.com address", variant: "destructive" });
+      return false;
+    }
+
+    if (password.length < 6) {
+      toast({ title: "Validation Error", description: "Password must be at least 6 characters long", variant: "destructive" });
+      return false;
+    }
+
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/;
+    if (!passwordRegex.test(password)) {
+      toast({ title: "Validation Error", description: "Password must contain at least one uppercase letter and one special character", variant: "destructive" });
       return false;
     }
 
@@ -46,30 +69,34 @@ const NgoSignup = () => {
       return false;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast({ title: "Validation Error", description: "Invalid email format", variant: "destructive" });
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      toast({ title: "Validation Error", description: "Invalid phone number. Must be a 10-digit Indian number.", variant: "destructive" });
       return false;
     }
 
+    const zipCodeRegex = /^\d{6}$/;
+    const trimmedZip = zipCode.trim();
+    if (trimmedZip && !zipCodeRegex.test(trimmedZip)) {
+      toast({ title: "Validation Error", description: "ZIP Code must be exactly 6 digits.", variant: "destructive" });
+      return false;
+    }
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validateForm()) return;
 
     const fullAddress = `${formData.address}, ${formData.city}, ${formData.state}, ${formData.zipCode}`;
-
     const payload = {
-      OrganizationName: formData.ngoName,
-      ContactPerson: formData.contactPerson,
-      Email: formData.email,
-      Password: formData.password,
-      Phone: formData.phone,
-      Address: fullAddress,
-      Role: 'ngo'
+      organizationName: formData.ngoName,
+      contactPerson: formData.contactPerson,
+      email: formData.email,
+      password: formData.password,
+      phone: formData.phone,
+      address: fullAddress,
+      role: 'ngo'
     };
 
     try {
@@ -145,7 +172,15 @@ const NgoSignup = () => {
               </div>
               <div>
                 <Label htmlFor="zipCode">ZIP Code</Label>
-                <Input id="zipCode" name="zipCode" value={formData.zipCode} onChange={handleChange} />
+                <Input
+                  id="zipCode"
+                  name="zipCode"
+                  value={formData.zipCode}
+                  onChange={handleChange}
+                  maxLength={6}
+                  inputMode="numeric"
+                  pattern="\d*"
+                />
               </div>
             </div>
 
